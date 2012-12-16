@@ -120,17 +120,11 @@ class ca_net(object):
             return self.add_element(element)
             
     def update(self, millisec):
-        moved_jobs = 0
-        ended_jobs = 0
-        move_of_ended_jobs = 0
         for e in self.elements:
             self.elements[e].element.calculate_workload(millisec)
         for e in self.elements:
-            new_moved_jobs, new_ended_jobs, new_move_of_ended_jobs = self.elements[e].element.update(millisec)
-            moved_jobs += new_moved_jobs
-            ended_jobs += new_ended_jobs
-            move_of_ended_jobs += new_move_of_ended_jobs            
-        return moved_jobs, ended_jobs, move_of_ended_jobs
+            self.elements[e].element.update(millisec)           
+        return
     
     def calc_geo_distance(self):
         dist = []

@@ -9,6 +9,7 @@ import math
 import numpy
 
 from LogManager import msg_mgr
+from InfoManager import info_mgr
 
 WL_DEACTIVATE_THRESHOLD = 0.02
 WL_ACTIVATE_THRESHOLD = 0.1
@@ -90,11 +91,7 @@ class node(object):
         return 1.0
         
     def update(self, millisec):
-        
-        moved_jobs = 0
-        ended_jobs_num = 0
-        move_of_ended_jobs = 0
-        
+                
         if self.current_workload/self.max_workload < WL_DEACTIVATE_THRESHOLD:
             self.communicate = False  
         elif self.current_workload/self.max_workload > WL_ACTIVATE_THRESHOLD:
@@ -178,7 +175,7 @@ class node(object):
                                         n.element.add_job(self.jobs[job_to_move])
                                         del self.jobs[job_to_move]
                                         n.element.calculate_workload(millisec)
-                                        moved_jobs += 1
+                                        info_mgr.add_moved_job()
                                     else:
                                         moving_tries -= 1 
                                 except Exception as e:
@@ -209,13 +206,12 @@ class node(object):
                 job.update(job.minimum_workload * perc_work)
             if job.end:
                 ended_jobs[job.id] = job
+                info_mgr.add_ended_job(job.moved_times)
             else:
                 continue_jobs[job.id] = job
         self.jobs = continue_jobs
-        ended_jobs_num = len(ended_jobs)
-        move_of_ended_jobs = sum([job.moved_times for job in ended_jobs.values()])
-        
-        return moved_jobs, ended_jobs_num, move_of_ended_jobs
+                
+        return
         
 
 class net(object):
