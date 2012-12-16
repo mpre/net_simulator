@@ -1,4 +1,5 @@
-== INFO ==
+INFO
+==================
 
 Net workload balancer based on multi agent system. 
 Simulator developed as part of my exam for a class
