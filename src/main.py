@@ -223,6 +223,8 @@ def main():
                 cmd_str = ""
             elif e.type == KEYDOWN and e.key == pygame.locals.K_F3:
                 visualize_graphs = not visualize_graphs
+            elif e.type == KEYDOWN and e.key == pygame.locals.K_F5:
+                end = True
             elif e.type == KEYDOWN:
                 cmd_str += str(e.unicode)
         
@@ -252,6 +254,19 @@ def main():
         r.left = 5
         
         screen.blit(image, r)
+        
+        for switch in info_mgr.switches.values():
+            cell = switch[0]
+            color = switch[1]
+            alpha = float(cell.element.already_moved) / float(ca.MOVE_COOLDOWN)
+            image = pygame.Surface((SQUARE_DIM+10, SQUARE_DIM+10))
+            image.set_alpha(alpha * 255)
+            image.fill(color)
+            rect = image.get_rect()
+            rect.top = (cell.position[1] * (SQUARE_DIM + CELL_PADDING) + AUTOMATA_OFFSET_Y) * GRID_FRAC - 5
+            rect.left =(cell.position[0] * (SQUARE_DIM + CELL_PADDING) + AUTOMATA_OFFSET_X) * GRID_FRAC - 5
+            
+            screen.blit(image, rect)
 
         for cell in automata.elements:
             image = pygame.Surface((SQUARE_DIM, SQUARE_DIM))
@@ -430,6 +445,7 @@ def main():
         pygame.display.update()
         
         start_time = current_time
+    info_mgr.finalize_stats()
     return 0
     
 if __name__ == "__main__":

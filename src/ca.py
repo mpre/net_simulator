@@ -8,6 +8,7 @@ import math
 import numpy
 
 from LogManager import msg_mgr
+from InfoManager import info_mgr
 
 L = 'LEFT'
 R = 'RIGHT'
@@ -16,7 +17,7 @@ D = 'DOWN'
 
 MAX_CELLS = 16
 
-MOVE_COOLDOWN = 5
+MOVE_COOLDOWN = 500
 
 class ca_cell(object):
     
@@ -57,6 +58,7 @@ class ca_cell(object):
         self.element.already_moved = MOVE_COOLDOWN
         cell.element.already_moved = MOVE_COOLDOWN
         msg_mgr.add_msg("[INFO] Switched elements between {0} and {1}".format(self, cell))
+        info_mgr.add_switch(self, cell)
         
     def set_net(self, net):
         self.net = net

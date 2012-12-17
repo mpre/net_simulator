@@ -46,9 +46,10 @@ class job(object):
         return False
         
     def update(self, milliseconds):
-        self.work_requested -= milliseconds
         if self.cooldown > 0:
             self.cooldown -= milliseconds
+        else:
+            self.work_requested -= milliseconds
         if self.work_requested <= 0:
             self.end = True
             msg_mgr.add_msg("[INFO] JOB {0} ENDED".format(self.id))
@@ -98,12 +99,14 @@ class node(object):
             self.communicate = True
             # print self.cell.position, " has too many jobs"
         
-        if self.already_moved:
-            self.already_moved -=1
+        if self.already_moved >0:
+            self.already_moved -=millisec
+            if self.already_moved <=0:
+                info_mgr.remove_switch(self.cell)
         
-        elif random.random() < MOVING_P:
+        elif random.random() < MOVING_P and self.already_moved <=0:
             # chose a random element of the net
-            possible_cells = [x for x in self.cell.net.elements.values() if x != self.cell]
+            possible_cells = [x for x in self.cell.net.elements.values() if x != self.cell and x.element.already_moved <= 0]
             if possible_cells:
                 other_cell = random.choice(possible_cells)
                                    
