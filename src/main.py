@@ -68,7 +68,7 @@ def analyze_cmd(cmd):
     return cstr, params
     
 def main():   
-        
+    
     end = False 
     visualize_graphs = True
     
@@ -82,6 +82,16 @@ def main():
     screen = pygame.display.set_mode(WINDOW_SIZE)    
     
     cmd_str = ""
+    
+    cmd_vect = []
+    
+    cmd_file = open("cmd.txt")
+    for line in cmd_file.readlines():
+        time, cmd = line.split(" ")
+        print cmd
+        cmd_vect.append([time, cmd])
+    cmd_file.close()
+        
     
     plt.figure(figsize=(4, 8))
 #    ax1 = wl_fig.add_subplot(411)
@@ -131,10 +141,15 @@ def main():
     
     font = pygame.font.Font("font.otf", 12)
     small_font = pygame.font.Font("font.otf", 8)
-    
+        
     while not end:
         clock.tick(MAX_FRAMERATE)
         i += 1
+        current_time = pygame.time.get_ticks() * TIME_SPEED
+        if len(cmd_vect) >= 1 and int(cmd_vect[0][0]) < current_time:
+            _, cmd_str = cmd_vect.pop(0)
+            msg_mgr.add_msg("[INFO] Cmd from file : {0}".format(cmd_str[:-1]))
+            pygame.event.post(pygame.event.Event(USEREVENT, {'data' : cmd}))
         
         for e in pygame.event.get():
             if e.type == QUIT:
@@ -184,7 +199,7 @@ def main():
 #                                new_jobs +=1
                             msg_mgr.add_msg("[INFO] Added {0} new jobs to {1}".format(str(num_jobs), cell_pos))
                 cmd_str = ""
-            elif e.type == KEYDOWN and e.key == pygame.locals.K_RETURN:
+            elif e.type == USEREVENT or (e.type == KEYDOWN and e.key == pygame.locals.K_RETURN):
                 cmd_type, params = analyze_cmd(cmd_str)
                 if cmd_type:
                     if cmd_type == ADD_JOB and len(params) == 4:
@@ -227,8 +242,6 @@ def main():
                 end = True
             elif e.type == KEYDOWN:
                 cmd_str += str(e.unicode)
-        
-        current_time = pygame.time.get_ticks() * TIME_SPEED
 
         automata.update(current_time - start_time)
 
