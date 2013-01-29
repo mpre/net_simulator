@@ -77,9 +77,16 @@ class ca_net(object):
        
     def full(self):
         return len(self.elements) == MAX_CELLS    
+    
+    def get_node_geo_pos(self, position):
+        r = None
+        for e in self.elements:
+            if position_name(e.element.position) == position:
+                r = None
+        return r
 
     def elements_position(self):
-        return (self.elements[cell].element.position for cell in self.elements)
+        return [self.elements[cell].element.position for cell in self.elements]
         
     def add_element(self, element):
         # print self.limit, MAX_CELLS

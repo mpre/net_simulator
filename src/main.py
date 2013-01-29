@@ -10,6 +10,8 @@ try:
     matplotlib.use("GTKAgg")
     import matplotlib.pyplot as plt
     import matplotlib.backends.backend_agg as agg
+    from matplotlib.backends.backend_pdf import PdfPages
+    pp = PdfPages('multipage.pdf')
     from LogManager import msg_mgr
     from InfoManager import info_mgr
     from InfoManager import MAX_VARIANCE_VALUE
@@ -44,6 +46,7 @@ GRID_FRAC = 1
 ## CMDS
 ADD_JOB = 'a'
 ADD_NODE = 'q'
+QUIT_SIM = 'x'
 
 def random2dpos():
     x = int(round(math.sqrt(ca.MAX_CELLS)/2))
@@ -58,6 +61,9 @@ def random2dpos():
     
 def position_name(node):
     return "{0}{1}".format(*node.position)
+
+def position_name2(position):
+    return "{0}-{1}".format(*position)
     
 def analyze_cmd(cmd):
     cstr = cmd[0]
@@ -70,7 +76,7 @@ def analyze_cmd(cmd):
 def main():   
     
     end = False 
-    visualize_graphs = True
+    visualize_graphs = False
     
     automata = ca.ca_net() 
     
@@ -152,6 +158,7 @@ def main():
             pygame.event.post(pygame.event.Event(USEREVENT, {'data' : cmd}))
         
         for e in pygame.event.get():
+            print e
             if e.type == QUIT:
                 end = True   
             elif e.type == KEYDOWN and e.key == K_n:
@@ -183,22 +190,29 @@ def main():
 #                    jobid += 1
 #                    new_jobs += 1
             elif e.type == KEYDOWN and e.key == pygame.locals.K_ESCAPE:
-                cmd_str = "a,0-0,100,350,1"
-                cmd_type, params = analyze_cmd(cmd_str)
-                if cmd_type:
-                    if cmd_type == ADD_JOB and len(params) == 4:
-                        cell_pos = params[0]
-                        num_jobs = int(params[1])
-                        work_requested = int(params[2])
-                        min_workload=int(params[3])
-                        if cell_pos in automata.elements:
+                current_element = None
+                for el in automata.elements.values():
+                    if el.position == (0,0):
+                        current_element = el.element
+                cmd_str = "a,{0}-{1},50,500,1".format(*current_element.position)
+                msg_mgr.add_msg("[INFO] Shortcut from keyboard : {0}".format(cmd_str))
+                _, params = analyze_cmd(cmd_str)
+                cell_pos = params[0]
+                num_jobs = int(params[1])
+                work_requested = int(params[2])
+                min_workload=int(params[3])
+                posts = [position_name2(automata.elements[x].element.position) for x in automata.elements]
+                if cell_pos in posts:
+                    current_node = None
+                    for x in automata.elements:
+                        if position_name2(automata.elements[x].element.position) == cell_pos:
+                            current_node = automata.elements[x].element
                             for _ in range(num_jobs):
                                 j = real_net.job(info_mgr.get_next_jobid(), start_time, work_requested, min_workload)
-                                automata.elements[cell_pos].element.add_job(j)
-#                                jobid +=1 
-#                                new_jobs +=1
+                                current_node.add_job(j)
                             msg_mgr.add_msg("[INFO] Added {0} new jobs to {1}".format(str(num_jobs), cell_pos))
-                cmd_str = ""
+                        else:
+                            msg_mgr.add_msg("[ERROR] Something went wrong while adding jobs to {0} node".format(cell_pos))
             elif e.type == USEREVENT or (e.type == KEYDOWN and e.key == pygame.locals.K_RETURN):
                 cmd_type, params = analyze_cmd(cmd_str)
                 if cmd_type:
@@ -208,13 +222,20 @@ def main():
                             num_jobs = int(params[1])
                             work_requested = int(params[2])
                             min_workload=int(params[3])
-                            if cell_pos in automata.elements:
+                            posts = [position_name2(automata.elements[x].element.position) for x in automata.elements]
+                            if cell_pos in posts:
+                                current_node = None
+                                for x in automata.elements:
+                                    if position_name2(automata.elements[x].element.position) == cell_pos:
+                                        current_node = automata.elements[x].element
                                 for _ in range(num_jobs):
                                     j = real_net.job(info_mgr.get_next_jobid(), start_time, work_requested, min_workload)
-                                    automata.elements[cell_pos].element.add_job(j)
+                                    current_node.add_job(j)
 #                                    jobid +=1 
 #                                    new_jobs +=1
                                 msg_mgr.add_msg("[INFO] Added {0} new jobs to {1}".format(str(num_jobs), cell_pos))
+                            else:
+                                msg_mgr.add_msg("[ERROR] Something went wrong while adding jobs to {0} node".format(cell_pos))
                         except Exception as e:
                             msg_mgr.add_msg("[INFO] Bad command : {0}".format(e))
                     elif cmd_type == ADD_NODE and len(params) == 2:
@@ -235,6 +256,8 @@ def main():
                                                                                             str(cell.position)))
                                 else:
                                     msg_mgr.add_msg("[ERROR] Can't add node in {0}".format(str(position)))
+                    elif cmd_type == QUIT_SIM:
+                        end = True
                 cmd_str = ""
             elif e.type == KEYDOWN and e.key == pygame.locals.K_F3:
                 visualize_graphs = not visualize_graphs
@@ -459,6 +482,9 @@ def main():
         
         start_time = current_time
     info_mgr.finalize_stats()
+    
+    
+    
     return 0
     
 if __name__ == "__main__":
