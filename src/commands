@@ -1,0 +1,8 @@
+- q,x,y : add a new node in (x,y)
+- n     : add a new node in random position
+- c     : add (10,60) random jobs to a random node
+- x		: exit simulator
+- ESC   : sets cmd to "a,0-0,100,350,1" and execute it
+- RETURN: execute cmd
+- a,x-y,n,w,m : add n jobs to cell (x,y) with weight w and min workload m
+- 
