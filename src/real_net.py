@@ -11,14 +11,19 @@ import numpy
 from LogManager import msg_mgr
 from InfoManager import info_mgr
 
-WL_DEACTIVATE_THRESHOLD = 0.02
-WL_ACTIVATE_THRESHOLD = 0.1
-WL_PERCENTAGE_TOLERATION = 0.90
+from misc import position_name
+
+WL_DEACTIVATE_THRESHOLD = 0.3
+WL_ACTIVATE_THRESHOLD = 0.3
+WL_PERCENTAGE_TOLERATION = 0.95
 
 MAX_MOVING_TRIES_FAIL = 20
-JOB_MILLISEC_COOLDOWN = 1
+JOB_MILLISEC_COOLDOWN = 50
 
-MOVING_P = 0.2
+MOVING_P = 0.4
+
+DISABLE_COMMUNICATIONS = False
+DISABLE_JUMP_COMMUNICATIONS = False
 
 def euclidean_dist(x, y):
     return math.sqrt((x.position[0] - y.position[0])**2 + 
@@ -65,6 +70,20 @@ class node(object):
         self.communicate = False
         self.already_moved = 0
     
+    
+    def remove(self):
+        #self.cell.remove()
+        self.max_workload = 0
+        self.current_workload = 0
+        print self.jobs
+        print len(self.jobs)
+        info_mgr.add_lost_job(len(self.jobs))
+        info_mgr.remove_cell(position_name(self))
+        self.position = None
+        self.jobs = {}
+        self.already_moved = 0
+        self = None
+    
     def add_job(self, job):
         self.jobs[job.id] = job
     
@@ -93,6 +112,8 @@ class node(object):
         
     def update(self, millisec):
                 
+        neighbor_in_help = []
+        
         if self.current_workload/self.max_workload < WL_DEACTIVATE_THRESHOLD:
             self.communicate = False  
         elif self.current_workload/self.max_workload > WL_ACTIVATE_THRESHOLD:
@@ -104,10 +125,11 @@ class node(object):
             if self.already_moved <=0:
                 info_mgr.remove_switch(self.cell)
         
-        elif random.random() < MOVING_P and self.already_moved <=0:
+        elif (not DISABLE_JUMP_COMMUNICATIONS) and (not DISABLE_COMMUNICATIONS) and random.random() < MOVING_P and self.already_moved <=0:
             # chose a random element of the net
             possible_cells = [x for x in self.cell.net.elements.values() if x != self.cell and x.element.already_moved <= 0]
             if possible_cells:
+                print possible_cells
                 other_cell = random.choice(possible_cells)
                                    
                 dist_self_here = []
@@ -143,6 +165,8 @@ class node(object):
 #                    print self.position, other_cell.element.position, numpy.average(dist_self_here), numpy.average(dist_self_there)
                     if numpy.average(dist_self_there + dist_other_here) < numpy.average(dist_self_here + dist_other_there):
                         self.cell.switch_with(other_cell)
+                    else:
+                        neighbor_in_help.append(other_cell)
 #                    elif min(dist_self_there) == min(dist_self_here):
 #                        if len(dist_self_there) > len(dist_self_here):
 #                            if numpy.average(dist_other_here) < numpy.average(dist_other_there):
@@ -150,9 +174,8 @@ class node(object):
 
 
         
-        if self.communicate:
+        if (not DISABLE_COMMUNICATIONS) and self.communicate:
             # print "and want to communicate", self.cell.neighbor
-            neighbor_in_help = []
             for n in self.cell.neighbor:
                 cell_n = self.cell.neighbor[n]
                 if cell_n:

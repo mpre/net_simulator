@@ -15,6 +15,8 @@ WL_HIST_FN = "data/wl.csv"
 WL_VAR_HIST_FN = "data/wl_var.csv"
 AVG_DIST_FN = "data/avg_dist.csv"
 AVG_MOVED_TIMES_FN = "data/avg_moves.csv"
+MOVED_JOBS_FN = "data/mvd_jobs.csv"
+LOST_JOBS_FN = "data/lost_jobs.csv"
 
 def position_name(node):
     return "{0}{1}".format(*node.position)
@@ -35,17 +37,24 @@ class InfoManager(object):
         self.new_jobs_history = []
         self.medium_distance_history = []
         self.average_moved_times = []
+        self.lost_jobs = 0
+        self.lost_jobs_h = []
         self.switches = {}
         
         self.wl_fout = open(WL_HIST_FN, 'w')
         self.wl_var_fout = open(WL_VAR_HIST_FN, 'w')
         self.avg_dist_fout = open(AVG_DIST_FN, 'w')
         self.avg_move_fout = open(AVG_MOVED_TIMES_FN, 'w')
+        self.mvd_jobs_fout = open(MOVED_JOBS_FN, 'w')
+        self.lost_jobs_fout = open(LOST_JOBS_FN, 'w')
         
     def add_cell(self, cellname, history_len=0, default_value=0):
         self.cell_workload_history[cellname] = []
         for _ in range(history_len):
             self.cell_workload_history[cellname].append(default_value)
+            
+    def remove_cell(self, cellname):
+        del self.cell_workload_history[cellname]
             
     def add_cell_wl(self, cellname, wl):
         self.cell_workload_history[cellname].append(wl)
@@ -61,7 +70,10 @@ class InfoManager(object):
         return self.cell_workload_history.keys()
     
     def cell_length(self):
-        return len(self.cell_workload_history[random.choice(self.cell_workload_history.keys())])
+        if self.cell_workload_history:
+            return len(self.cell_workload_history[random.choice(self.cell_workload_history.keys())])
+        else:
+            return 0
     
     def add_switch(self, cell_one, cell_two):
         cell_one_name = position_name(cell_one)
@@ -85,7 +97,7 @@ class InfoManager(object):
         if len(self.wl_history) > MAX_WL_HISTORY:
             self.wl_fout.write("{0}\n".format(str(self.wl_history.pop(0))))
         
-        self.wl_variance_history.append(numpy.var(wl))
+        self.wl_variance_history.append(numpy.sqrt(numpy.var(wl)))
         if len(self.wl_variance_history) > MAX_WL_HISTORY:
             self.wl_var_fout.write("{0}\n".format(str(self.wl_variance_history.pop(0))))        
             
@@ -94,9 +106,13 @@ class InfoManager(object):
             self.new_jobs_history.pop(0)
         self.new_jobs = 0
         
+        self.lost_jobs_h.append(self.lost_jobs)
+        if len(self.lost_jobs_h) > MAX_WL_HISTORY:
+            self.lost_jobs_fout.write("{0}\n".format(self.lost_jobs_h.pop(0)))
+        
         self.moved_jobs_history.append(self.moved_jobs)
         if len(self.moved_jobs_history) > MAX_WL_HISTORY:
-            self.moved_jobs_history.pop(0)
+            self.mvd_jobs_fout.write("{0}\n".format(str(self.moved_jobs_history.pop(0))))
         self.moved_jobs = 0
                     
         self.average_moved_times.append(float(self.ended_jobs_total_move)/(max(self.ended_jobs,1)))
@@ -110,6 +126,9 @@ class InfoManager(object):
     
     def add_moved_job(self):
         self.moved_jobs += 1
+    
+    def add_lost_job(self, n):
+        self.lost_jobs += n
     
     def add_ended_job(self, moves):
         self.ended_jobs += 1
@@ -132,6 +151,14 @@ class InfoManager(object):
         for x in self.average_moved_times:
             self.avg_move_fout.write("{0}\n".format(str(x)))
         self.avg_move_fout.close()
+        
+        for x in self.moved_jobs_history:
+            self.mvd_jobs_fout.write("{0}\n".format(str(x)))
+        self.mvd_jobs_fout.close()
+        
+        for x in self.lost_jobs_h:
+            self.lost_jobs_fout.write("{0}\n".format(str(x)))
+        self.lost_jobs_fout.close()
         return
         
         

@@ -13,10 +13,12 @@ pp = PdfPages('multipage.pdf')
 
 import sys
 
-files = (("avg_dist.csv", [0, 15]),
-         ("avg_moves.csv", [0, 10]),
-         ("wl_var.csv", [0, 100]),
-         ("wl.csv", [0, 105]))
+files = (("avg_dist.csv", [0, 6]),
+         ("avg_moves.csv", [0, 100]),
+         ("wl_var.csv", [0, 105]),
+         ("wl.csv", [0, 105]),
+         ("mvd_jobs.csv", [0, 500]),
+         ("lost_jobs.csv", [0, 2500]))
 
 colors = ( (1,0,0),
            (0,1,0),
@@ -43,7 +45,7 @@ for fname in files:
         for line in open(fin):
             v_temp.append(float(line))
         values.append(v_temp)
-    fig = matplotlib.pyplot.figure(figsize=(8.0, 5.0))
+    fig = matplotlib.pyplot.figure(figsize=(7.0, 5.0))
     ax = fig.add_subplot(111)
     for v in values:
         ax.plot(v, c=colors[i%len(colors)])

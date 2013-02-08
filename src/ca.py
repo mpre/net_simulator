@@ -9,6 +9,8 @@ import numpy
 
 from LogManager import msg_mgr
 from InfoManager import info_mgr
+from misc import position_name2
+from misc import position_name
 
 L = 'LEFT'
 R = 'RIGHT'
@@ -17,7 +19,7 @@ D = 'DOWN'
 
 MAX_CELLS = 16
 
-MOVE_COOLDOWN = 500
+MOVE_COOLDOWN = 100
 
 class ca_cell(object):
     
@@ -31,6 +33,15 @@ class ca_cell(object):
         self.element = element
         self.element.cell = self
         self.net = None
+        
+    def remove(self):
+        dcompl = {U : D, D : U, R : L, L : R}
+        for direc in self.neighbor:
+            if self.neighbor[direc]:
+                self.neighbor[direc].neighbor[dcompl[direc]] = None
+        self.element.remove()
+        #self.net.remove(self.position)
+            
         
     def add_neighbor(self, cell):
         # print "ADD NEIGH > ", str(self.position), str(cell.position)
@@ -74,27 +85,50 @@ class ca_net(object):
         self.next_new = [0,0]
         self.add_direction = U
         self.elements = {}
+        self.empty_position = []
+        
+    def remove(self, position):
+        self.elements[position_name2(position)].remove()
+        del self.elements[position_name2(position)]
+        self.empty_position.append(position)
        
     def full(self):
         return len(self.elements) == MAX_CELLS    
     
     def get_node_geo_pos(self, position):
         r = None
-        for e in self.elements:
+        for e in self.elements.values():
             if position_name(e.element.position) == position:
                 r = None
         return r
+    
+    def get_cell_pos(self, position):
+        r = None
+        for e in self.elements.values():
+            if position == e.element.position:
+                r = e
+        if r:
+            return r.position
+        else:
+            return None
 
     def elements_position(self):
         return [self.elements[cell].element.position for cell in self.elements]
         
     def add_element(self, element):
+        from_e_p = False
         # print self.limit, MAX_CELLS
         if 2*(self.limit+1) > math.sqrt(MAX_CELLS):
             msg_mgr.add_msg("[INFO] > Too many cells, pass")
             return False
-        position = "{0}-{1}".format(self.next_new[0], self.next_new[1])
-        pos_vector = (self.next_new[0], self.next_new[1])
+        if self.empty_position:
+            p = self.empty_position.pop(0)
+            position = "{0}-{1}".format(p[0], p[1])
+            pos_vector = (p[0], p[1])
+            from_e_p = True
+        else:
+            position = "{0}-{1}".format(self.next_new[0], self.next_new[1])
+            pos_vector = (self.next_new[0], self.next_new[1])
         if not position in self.elements:
             element.position = (pos_vector[0], pos_vector[1])
             self.elements[position] = element
@@ -106,22 +140,23 @@ class ca_net(object):
                 neig_pos = "{0}-{1}".format(p[0], p[1])
                 if neig_pos in self.elements:
                     self.elements[neig_pos].add_neighbor(element)
-            if self.add_direction == U:
-                self.next_new = (self.next_new[0], self.next_new[1] -1)
-                if self.next_new[1] < -self.limit:
-                    self.add_direction = R
-            elif self.add_direction == R:
-                self.next_new = (self.next_new[0] +1, self.next_new[1])
-                if self.next_new[0] > self.limit:
-                    self.add_direction = D 
-            elif self.add_direction == D:
-                self.next_new = (self.next_new[0], self.next_new[1] +1)
-                if self.next_new[1] > self.limit:
-                    self.add_direction = L
-            else:
-                self.next_new = (self.next_new[0] -1, self.next_new[1])
-                if self.next_new[0] < -self.limit:
-                    self.add_direction = U
+            if not from_e_p:
+                if self.add_direction == U:
+                    self.next_new = (self.next_new[0], self.next_new[1] -1)
+                    if self.next_new[1] < -self.limit:
+                        self.add_direction = R
+                elif self.add_direction == R:
+                    self.next_new = (self.next_new[0] +1, self.next_new[1])
+                    if self.next_new[0] > self.limit:
+                        self.add_direction = D 
+                elif self.add_direction == D:
+                    self.next_new = (self.next_new[0], self.next_new[1] +1)
+                    if self.next_new[1] > self.limit:
+                        self.add_direction = L
+                else:
+                    self.next_new = (self.next_new[0] -1, self.next_new[1])
+                    if self.next_new[0] < -self.limit:
+                        self.add_direction = U
             return pos_vector
         else:
             self.limit += 1

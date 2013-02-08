@@ -19,6 +19,8 @@ try:
     import pylab
     import numpy
     import math
+    from misc import position_name
+    from misc import position_name2
 except Exception, message:
     print "[ERROR] :main.py > ", message
     sys.exit(-1)
@@ -42,11 +44,13 @@ TIME_SPEED = 1
 MAX_FRAMERATE = 48 
 C_INTERVAL = 5
 GRID_FRAC = 1
+UPDATE_INT = 200
 
 ## CMDS
 ADD_JOB = 'a'
 ADD_NODE = 'q'
 QUIT_SIM = 'x'
+DELETE_NODE = 'd'
 
 def random2dpos():
     x = int(round(math.sqrt(ca.MAX_CELLS)/2))
@@ -58,12 +62,6 @@ def random2dpos():
     else:
         return (random.choice(range(-x+1, x)),
                 random.choice(range(-x+1, x)))
-    
-def position_name(node):
-    return "{0}{1}".format(*node.position)
-
-def position_name2(position):
-    return "{0}-{1}".format(*position)
     
 def analyze_cmd(cmd):
     cstr = cmd[0]
@@ -94,7 +92,6 @@ def main():
     cmd_file = open("cmd.txt")
     for line in cmd_file.readlines():
         time, cmd = line.split(" ")
-        print cmd
         cmd_vect.append([time, cmd])
     cmd_file.close()
         
@@ -106,6 +103,7 @@ def main():
 #    ax4 = wl_fig.add_subplot(414)
     
     start_time = pygame.time.get_ticks()
+    last_update_time = pygame.time.get_ticks()
     
 #    jobid = 0      
 #    new_jobs = 0
@@ -127,8 +125,8 @@ def main():
     activate_line = [real_net.WL_ACTIVATE_THRESHOLD*100 for _ in range(MAX_WL_HISTORY)]
     deactivate_line = [real_net.WL_DEACTIVATE_THRESHOLD*100 for _ in range(MAX_WL_HISTORY)]
     
-    for _ in range(1):
-        net_node = real_net.node(random2dpos())
+    for _ in range(0):
+        net_node = real_net.node((0,0))
         cell = ca.ca_cell(element = net_node)
         automata.add_element(cell)
     
@@ -158,7 +156,6 @@ def main():
             pygame.event.post(pygame.event.Event(USEREVENT, {'data' : cmd}))
         
         for e in pygame.event.get():
-            print e
             if e.type == QUIT:
                 end = True   
             elif e.type == KEYDOWN and e.key == K_n:
@@ -256,6 +253,11 @@ def main():
                                                                                             str(cell.position)))
                                 else:
                                     msg_mgr.add_msg("[ERROR] Can't add node in {0}".format(str(position)))
+                    elif cmd_type == DELETE_NODE:
+                        pos = (int(params[0]), int(params[1]))
+                        pos2 = automata.get_cell_pos(pos)
+                        automata.remove(pos2)      
+                        msg_mgr.add_msg("[INFO] Removed node : real_pos {0} - automata_pos {1}".format(str(pos), str(pos2)))                  
                     elif cmd_type == QUIT_SIM:
                         end = True
                 cmd_str = ""
@@ -309,7 +311,7 @@ def main():
             wl = min(automata.elements[cell].element.workload / automata.elements[cell].element.max_workload, 1.0)
             color = (int(wl*255), 0, int((1.0 -wl)*255))
 
-            if i%C_INTERVAL == 0:
+            if current_time > last_update_time + UPDATE_INT:
                 node_name = position_name(automata.elements[cell].element)
                 info_mgr.add_cell_wl(node_name, wl*100)
 #                cell_wl_history[node_name].append(wl*100)
@@ -401,9 +403,10 @@ def main():
 #        
 #        tot_wl_var = numpy.var(wls)
 
-        if i%C_INTERVAL == 0:
+        if current_time > last_update_time + UPDATE_INT:
             info_mgr.add_cell_distance(automata.calc_geo_distance())
             info_mgr.calc_frame_values()
+            last_update_time = current_time
 
                 
 #        if i%C_INTERVAL == 0:
@@ -421,61 +424,58 @@ def main():
 #                wl_variance_history.pop(0)
 #                new_jobs_history.pop(0)
 #                moved_jobs_history.pop(0)                         
-#                medium_distance_history.pop(0)
-                
-        if i%C_INTERVAL and visualize_graphs:         
+#                medium_distance_history.pop(0)        
 #            wl_fig.clf()
-                                    
-            plt.clf()
-            ax1 = plt.subplot(6,1,1)
-            ax1.set_title("Load average")
-            ax1.plot(info_mgr.wl_history)
-            for cell in automata.elements:
-                node_name = position_name(automata.elements[cell].element)
-                ax1.plot(info_mgr.cell_workload_history[node_name], c=(0,1,0,0.35))
-            ax1.plot(activate_line, c=(1.0,0,0))
-            ax1.plot(deactivate_line, c=(0.7, 0, 0))
-            pylab.ylim([-0.5, 100])
-            
-            ax2 = plt.subplot(6,1,2, sharex=ax1)
-            ax2.set_title("Load variance")
-            ax2.plot(info_mgr.wl_variance_history)
-            pylab.ylim([-0.5, 1000])
-            
-            ax3 = plt.subplot(6,1,3, sharex=ax1)
-            ax3.set_title("New Jobs")
-            ax3.plot(info_mgr.new_jobs_history)
-            pylab.ylim([-0.1,500])
-                        
-            ax4 = plt.subplot(6,1,4, sharex=ax1)
-            ax4.set_title("Moved Jobs")
-            ax4.plot(info_mgr.moved_jobs_history)
-            pylab.ylim([-0.1, 150])
-            
-            ax5 = plt.subplot(6,1,5, sharex=ax1)
-            ax5.set_title("Average neighbor distance")
-            ax5.plot(info_mgr.medium_distance_history)
-            pylab.ylim([-0.1, math.sqrt(ca.MAX_CELLS)*2])
-            
-            ax6 = plt.subplot(6,1,6, sharex=ax1)
-            ax6.set_title("Average move before end")
-            ax6.plot(info_mgr.average_moved_times)
-            pylab.ylim([-0.1, 5])
-                        
-            pylab.xlim([0, MAX_WL_HISTORY])
-            
-            
-#            
-            plt.tight_layout(0.4, 0.5, 1.0)
-#            
-##            wl_graph_canvas.draw()
-##    
-##            wl_renderer = wl_graph_canvas.get_renderer()
-##            wl_raw_data = wl_renderer.tostring_rgb()
-##                
-##            wl_size = wl_graph_canvas.get_width_height()
-##            wl_surf = pygame.image.fromstring(wl_raw_data, wl_size, "RGB")
-            plt.draw()
+            if visualize_graphs:                        
+                plt.clf()
+                ax1 = plt.subplot(6,1,1)
+                ax1.set_title("Load average")
+                ax1.plot(info_mgr.wl_history)
+                for cell in automata.elements:
+                    node_name = position_name(automata.elements[cell].element)
+                    ax1.plot(info_mgr.cell_workload_history[node_name], c=(0,1,0,0.35))
+                ax1.plot(activate_line, c=(1.0,0,0))
+                ax1.plot(deactivate_line, c=(0.7, 0, 0))
+                pylab.ylim([-0.5, 100])
+                
+                ax2 = plt.subplot(6,1,2, sharex=ax1)
+                ax2.set_title("Load variance")
+                ax2.plot(info_mgr.wl_variance_history)
+                pylab.ylim([-0.5, 1000])
+                
+                ax3 = plt.subplot(6,1,3, sharex=ax1)
+                ax3.set_title("New Jobs")
+                ax3.plot(info_mgr.new_jobs_history)
+                pylab.ylim([-0.1,500])
+                            
+                ax4 = plt.subplot(6,1,4, sharex=ax1)
+                ax4.set_title("Moved Jobs")
+                ax4.plot(info_mgr.moved_jobs_history)
+                pylab.ylim([-0.1, 150])
+                
+                ax5 = plt.subplot(6,1,5, sharex=ax1)
+                ax5.set_title("Average neighbor distance")
+                ax5.plot(info_mgr.medium_distance_history)
+                pylab.ylim([-0.1, math.sqrt(ca.MAX_CELLS)*2])
+                
+                ax6 = plt.subplot(6,1,6, sharex=ax1)
+                ax6.set_title("Average move before end")
+                ax6.plot(info_mgr.average_moved_times)
+                pylab.ylim([-0.1, 5])
+                            
+                pylab.xlim([0, MAX_WL_HISTORY])
+                
+                
+    #            
+                plt.tight_layout(0.4, 0.5, 1.0)
+    ##            wl_graph_canvas.draw()
+    ##    
+    ##            wl_renderer = wl_graph_canvas.get_renderer()
+    ##            wl_raw_data = wl_renderer.tostring_rgb()
+    ##                
+    ##            wl_size = wl_graph_canvas.get_width_height()
+    ##            wl_surf = pygame.image.fromstring(wl_raw_data, wl_size, "RGB")
+                plt.draw()
 ##        screen.blit(wl_surf, (650, 5))            
                         
         pygame.display.update()
